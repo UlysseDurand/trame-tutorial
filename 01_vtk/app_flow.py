@@ -3,6 +3,17 @@ from trame.ui.vuetify import SinglePageLayout
 from trame.widgets import vtk, vuetify
 
 from vtkmodules.vtkFiltersSources import vtkConeSource
+from vtkmodules.vtkCommonColor import vtkNamedColors
+from vtkmodules.vtkCommonCore import vtkLookupTable
+from vtkmodules.vtkFiltersCore import (
+    vtkContourFilter,
+    vtkGlyph3D,
+    vtkMaskPoints,
+    vtkThresholdPoints
+)
+from vtkmodules.vtkFiltersModeling import vtkOutlineFilter
+from vtkmodules.vtkFiltersSources import vtkConeSource
+from vtkmodules.vtkIOLegacy import vtkStructuredPointsReader
 from vtkmodules.vtkRenderingCore import (
     vtkActor,
     vtkPolyDataMapper,
@@ -18,6 +29,9 @@ from vtkmodules.vtkInteractionStyle import vtkInteractorStyleSwitch  # noqa
 # local rendering, but doesn't hurt to include it
 import vtkmodules.vtkRenderingOpenGL2  # noqa
 
+import os
+
+CURRENT_DIRECTORY = os.path.abspath(os.path.dirname(__file__))
 
 # -----------------------------------------------------------------------------
 # VTK pipeline
@@ -31,13 +45,78 @@ renderWindowInteractor = vtkRenderWindowInteractor()
 renderWindowInteractor.SetRenderWindow(renderWindow)
 renderWindowInteractor.GetInteractorStyle().SetCurrentStyleToTrackballCamera()
 
-cone_source = vtkConeSource()
-mapper = vtkPolyDataMapper()
-mapper.SetInputConnection(cone_source.GetOutputPort())
-actor = vtkActor()
-actor.SetMapper(mapper)
+# Read the Data
 
-renderer.AddActor(actor)
+reader = vtkStructuredPointsReader()
+reader.SetFileName(os.path.join(CURRENT_DIRECTORY, "../data/carotid.vtk"))
+# Glyphs
+threshold = vtkThresholdPoints()
+threshold.SetInputConnection(reader.GetOutputPort())
+threshold.ThresholdByUpper(200)
+
+mask = vtkMaskPoints()
+mask.SetInputConnection(threshold.GetOutputPort())
+mask.SetOnRatio(5)
+
+cone = vtkConeSource()
+cone.SetResolution(11)
+cone.SetHeight(1)
+cone.SetRadius(0.25)
+
+cones = vtkGlyph3D()
+cones.SetInputConnection(mask.GetOutputPort())
+cones.SetSourceConnection(cone.GetOutputPort())
+cones.SetScaleFactor(0.4)
+cones.SetScaleModeToScaleByVector()
+
+lut = vtkLookupTable()
+lut.SetHueRange(.667, 0.0)
+lut.Build()
+
+scalarRange = [0] * 2
+cones.Update()
+scalarRange[0] = cones.GetOutput().GetPointData().GetScalars().GetRange()[0]
+scalarRange[1] = cones.GetOutput().GetPointData().GetScalars().GetRange()[1]
+
+vectorMapper = vtkPolyDataMapper()
+vectorMapper.SetInputConnection(cones.GetOutputPort())
+vectorMapper.SetScalarRange(scalarRange[0], scalarRange[1])
+vectorMapper.SetLookupTable(lut)
+
+vectorActor = vtkActor()
+vectorActor.SetMapper(vectorMapper)
+
+# Contours
+iso = vtkContourFilter()
+iso.SetInputConnection(reader.GetOutputPort())
+iso.SetValue(0, 175)
+
+isoMapper = vtkPolyDataMapper()
+isoMapper.SetInputConnection(iso.GetOutputPort())
+isoMapper.ScalarVisibilityOff()
+
+isoActor = vtkActor()
+isoActor.SetMapper(isoMapper)
+isoActor.GetProperty().SetRepresentationToWireframe()
+isoActor.GetProperty().SetOpacity(0.25)
+
+# Outline
+colors = vtkNamedColors()
+
+outline = vtkOutlineFilter()
+outline.SetInputConnection(reader.GetOutputPort())
+
+outlineMapper = vtkPolyDataMapper()
+outlineMapper.SetInputConnection(outline.GetOutputPort())
+
+outlineActor = vtkActor()
+outlineActor.SetMapper(outlineMapper)
+outlineActor.GetProperty().SetColor(colors.GetColor3d("White"))
+
+renderer.AddActor(outlineActor)
+renderer.AddActor(vectorActor)
+renderer.AddActor(isoActor)
+
 renderer.ResetCamera()
 
 # -----------------------------------------------------------------------------

@@ -1,5 +1,6 @@
 from trame.app import get_server
 from trame.ui.vuetify import SinglePageLayout
+from trame.ui.vuetify import VAppLayout
 from trame.widgets import vtk, vuetify
 
 from vtkmodules.vtkFiltersSources import vtkConeSource
@@ -47,16 +48,14 @@ renderer.ResetCamera()
 server = get_server(client_type = "vue2")
 ctrl = server.controller
 
-with SinglePageLayout(server) as layout:
-    layout.title.set_text("Hello trame")
-
-    with layout.content:
+with VAppLayout(server) as layout:
+    with layout.root:
         with vuetify.VContainer(
             fluid=True,
             classes="pa-0 fill-height",
         ):
             view = vtk.VtkLocalView(renderWindow)
-
+            ctrl.on_server_ready.add(view.update)
 
 # -----------------------------------------------------------------------------
 # Main
