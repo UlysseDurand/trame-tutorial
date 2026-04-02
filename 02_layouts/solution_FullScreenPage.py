@@ -44,7 +44,7 @@ renderer.ResetCamera()
 # Trame
 # -----------------------------------------------------------------------------
 
-server = get_server(client_type = "vue2")
+server = get_server()
 ctrl = server.controller
 
 with VAppLayout(server) as layout:

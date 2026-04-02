@@ -20,7 +20,7 @@ import vtkmodules.vtkRenderingOpenGL2 #noqa
 # Get a server to work with
 # -----------------------------------------------------------------------------
 
-server = get_server(client_type = "vue2")
+server = get_server()
 
 # -
 # VTK Pipeline

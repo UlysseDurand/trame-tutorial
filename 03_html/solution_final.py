@@ -49,7 +49,7 @@ renderer.ResetCamera()
 # Trame setup
 # -----------------------------------------------------------------------------
 
-server = get_server(client_type = "vue2")
+server = get_server()
 state, ctrl = server.state, server.controller
 
 # -----------------------------------------------------------------------------
